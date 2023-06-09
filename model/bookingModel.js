@@ -33,7 +33,7 @@ const createBooking = async (booking) =>{
 }
 
 const updateBooking = async (booking) =>{
-    const existing = await db.get('SELECT * FROM bookings WHERE booking_number = ?', booking.bookingnumber)
+    const existing = await db.get('SELECT * FROM bookings WHERE booking_number = ?', booking.booking_number)
     const updatedBooking = await db.run('UPDATE bookings SET booking_email = $email, booking_date = $date, players = $players WHERE id = $id', {
         '$email': booking.email, 
         '$date': format(parseJSON(booking.datetime), 't'), 
@@ -71,4 +71,37 @@ const updateBooking = async (booking) =>{
         booking_number: booking.bookingnumber
     }
 }
-export {createBooking, updateBooking}
+
+const getBookingInfo = async (bookingnumber) => {
+
+    const info = await db.get(`select 
+    b.id, 
+    b.players,
+    b.booking_email,
+    count(distinct bl.lane_id) as lanes,
+    GROUP_CONCAT(s.size) as shoes
+    from bookings AS b
+    INNER join booking_lanes AS bl on b.id = bl.booking_id
+    INNER join shoes AS s on s.booking_id = b.id
+    WHERE b.booking_number = ?
+    group by b.id`, bookingnumber)
+    info.shoes = info.shoes.split(',').splice(0, info.players)
+    return info
+
+
+    //Hur returnerar man detta på ett snyggt sätt?
+    // const info = await db.all(`SELECT bookings.booking_number, bookings.booking_date, booking_lanes.lane_id, bookings.players, shoes.size
+    // FROM bookings
+    // INNER JOIN shoes ON bookings.id = shoes.booking_id
+    // INNER JOIN booking_lanes ON bookings.id = booking_lanes.booking_id
+    // WHERE bookings.booking_number = ${bookingnumber}`)
+    // console.log(info);
+}
+
+const deleteBooking = async (bookingNumber) => {
+    const deleted = await db.run('DELETE FROM bookings WHERE booking_number = ?', bookingNumber)
+    await db.run('DELETE FROM booking_lanes WHERE booking_id = ?', deleted.lastID)
+    await db.run('DELETE FROM shoes WHERE booking_id = ?', deleted.lastID)
+}
+
+export {createBooking, updateBooking, getBookingInfo, deleteBooking}

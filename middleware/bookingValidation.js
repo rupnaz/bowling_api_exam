@@ -49,3 +49,15 @@ export const validateShoes = (req, res, next) =>{
     }
     next()
 }
+
+export const validateExistingBooking = async (req, res, next) =>{
+    const bookingNumber = req.body.booking_number
+    const booking = await db.get('SELECT id FROM bookings WHERE booking_number = ?', bookingNumber)
+    if(!booking){
+        return res.status(400).json({
+            success: false,
+            message: 'No existing booking'
+        })
+    }
+    next()
+}
